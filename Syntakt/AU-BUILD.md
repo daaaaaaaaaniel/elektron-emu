@@ -22,6 +22,35 @@ The generated Xcode project is ignored by Git; `project.yml` is its source.
 The AU uses the existing engine and NanoVG/OpenGL interface. It does not require
 JUCE, a separate VST SDK, or an Apple Developer account for local ad-hoc signing.
 
+## Download a GitHub Actions build
+
+The **Syntakt AU** workflow builds the XcodeGen project on an Intel macOS runner,
+compiles both architectures, verifies the merged binary and ad-hoc signature,
+and uploads the component and build logs. It runs on relevant pushes and pull
+requests; manual runs are also available once the workflow is on the default
+branch. It requires no firmware, signing secrets, or Apple Developer account.
+
+Open this repository's **Actions** tab, select **Syntakt AU**, and open a successful
+run for the desired branch and commit. Download the **Syntakt-AU-universal**
+artifact within 14 days (GitHub sign-in is required). Extract the downloaded
+artifact, then extract its `Syntakt-AU-universal.zip` to obtain `syntakt.component`.
+The inner ZIP preserves the component bundle's permissions and signature.
+The artifact also includes its build commit, tool versions, and ZIP checksum.
+
+To install that build, close Logic, open Finder's **Go > Go to Folder**, enter
+`~/Library/Audio/Plug-Ins/Components/`, and copy `syntakt.component` there. Create
+the Components folder if necessary, and move any previous Syntakt component
+aside before installing. Follow the firmware and validation steps below,
+including `auval -v aumu sntk Simo`. You do not need to run bootstrap or install
+the compilation tools when using a downloaded component.
+
+These are development builds with ad-hoc signing, without notarization.
+macOS may require approval before loading a downloaded component. A successful
+workflow verifies compilation and packaging; audio, UI, and project restoration
+still need testing in Logic with your firmware. Build logs are a separate
+**Syntakt-AU-logs** artifact, uploaded even when compilation fails. GitHub-hosted
+runner billing follows the repository's plan and visibility.
+
 ## Prepare dependencies and generate the project
 
 From this repository's `Syntakt` directory:
@@ -133,9 +162,10 @@ analog tracks 9–12 are absent and the README documents one active instance.
 The Linux cloud environment can check the scripts, exercise build orchestration
 with mocked Apple tools, and compile Syntakt's portable C core. It cannot run
 XcodeGen's macOS executable, Apple SDK compilation, code signing, `auval`, or
-Logic. The macOS workflow must be built and validated locally before treating
-this component as working. Distribution signing/notarization and AUv3 packaging
-are separate work.
+Logic. GitHub Actions supplies a macOS runner for Apple SDK compilation and
+signature checks; `auval` and Logic testing with firmware remain local checks
+before treating the component as working. Distribution signing/notarization
+and AUv3 packaging are separate work.
 
 Run the portable build-script tests from the repository root with:
 
