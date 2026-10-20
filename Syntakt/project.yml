@@ -1,0 +1,33 @@
+name: SyntaktAU
+options:
+  minimumXcodeGenVersion: 2.42.0
+  defaultConfig: Release
+fileGroups:
+  - source
+  - AU-BUILD.md
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "12.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    ST_AU_WORK: "$(HOME)/Library/Caches/ElektronEmu/Syntakt-AU/arm64"
+aggregateTargets:
+  Syntakt-AU:
+    targets: []
+    buildScripts:
+      - name: Build and sign Syntakt AUv2
+        script: |
+          /bin/bash "$SRCROOT/source/vst/scripts/build-au-mac.sh" "$ST_AU_WORK"
+        shell: /bin/bash
+        basedOnDependencyAnalysis: false
+    settings:
+      SUPPORTED_PLATFORMS: macosx
+schemes:
+  Syntakt-AU:
+    build:
+      targets:
+        Syntakt-AU: all
+    run:
+      config: Release

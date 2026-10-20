@@ -17,6 +17,9 @@ The plug-in creates the folder and shows "Open folder" and "Choose firmware..." 
 
 ## Build
 
+For the XcodeGen-based **AUv2 component for Logic Pro**, see [AU-BUILD.md](AU-BUILD.md).
+Its Apple Silicon build and Logic validation require a Mac.
+
 On an Apple Silicon Mac with the Xcode command line tools, cmake, ninja and python3:
 
     cd source

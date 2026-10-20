@@ -17,6 +17,11 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+set(SYNTAKT_PLUGIN_FORMATS "vst3" CACHE STRING "DPF plugin formats (e.g. vst3;au on macOS)")
+if("au" IN_LIST SYNTAKT_PLUGIN_FORMATS AND NOT APPLE)
+  message(FATAL_ERROR "The Syntakt AU requires macOS and the Apple SDK")
+endif()
+
 set(DPF_ROOT "" CACHE PATH "sorgenti di DPF (https://github.com/DISTRHO/DPF)")
 if(NOT DPF_ROOT)
   message(FATAL_ERROR "DPF_ROOT non impostato")
@@ -45,7 +50,7 @@ if(HAVE_COLDBOOT EQUAL -1)
 endif()
 
 dpf_add_plugin(syntakt
-  TARGETS vst3
+  TARGETS ${SYNTAKT_PLUGIN_FORMATS}
   UI_TYPE opengl
   USE_FILE_BROWSER
   FILES_DSP ${PLUGIN_DSP_FILES}

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Shared by the AU scripts. Source this file; do not execute it directly.
+set -euo pipefail
+
+au_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+# Xcode GUI builds do not inherit a terminal's Homebrew PATH.
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+au_dpf_commit=4238e1c7f0351bbe488d79f0899c540543ac7583
+
+au_require_mac() {
+  if [[ $(uname -s) != Darwin ]]; then
+    echo "error: AU builds require macOS and the Apple SDK." >&2
+    exit 1
+  fi
+  if [[ $(uname -m) != arm64 ]]; then
+    echo "error: this initial AU build requires an Apple Silicon Mac running native arm64 tools." >&2
+    exit 1
+  fi
+  for tool in git cmake ninja python3 xcrun codesign; do
+    command -v "$tool" >/dev/null || { echo "error: missing $tool" >&2; exit 1; }
+  done
+  xcrun --sdk macosx --show-sdk-path >/dev/null
+}
+
+au_set_work() {
+  mkdir -p "$1"
+  au_work=$(cd "$1" && pwd)
+}
+
+au_check_dpf() {
+  [[ $(git -C "$au_work/dpf" rev-parse HEAD) == "$au_dpf_commit" ]] || {
+    echo "error: unexpected DPF revision; use a fresh dedicated AU work directory." >&2
+    exit 1
+  }
+  git -C "$au_work/dpf" apply --reverse --check "$au_root/vst/patches/dpf-offline.patch" || {
+    echo "error: DPF offline-render patch is missing; rerun bootstrap-au-mac.sh." >&2
+    exit 1
+  }
+}

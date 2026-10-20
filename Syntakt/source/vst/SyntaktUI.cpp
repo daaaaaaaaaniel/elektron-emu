@@ -443,7 +443,7 @@ protected:
         const EngineStatus es = fPlugin->status();
         std::string st = es.text;
         if (es.kind == EngineStatus::Running) {
-            st = (es.firmwareLabel.empty() ? std::string("Syntakt") : es.firmwareLabel) + " - emulator (VST3)";
+            st = (es.firmwareLabel.empty() ? std::string("Syntakt") : es.firmwareLabel) + " - emulator";
             if (!es.warning.empty()) st += " - " + es.warning;
         }
         if (fNoteUntil > t) st = fNote;
