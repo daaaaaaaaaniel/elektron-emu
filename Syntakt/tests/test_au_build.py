@@ -85,8 +85,16 @@ elif name == 'cmake' and '--build' in args:
 elif name == 'ditto':
     shutil.copytree(args[0], args[1], dirs_exist_ok=True)
 elif name == 'lipo':
-    if '-verify_arch' in args and os.environ.get('AU_TEST_MISSING_ARCH') in args[1:-1]:
-        sys.exit('mock missing architecture')
+    if '-verify_arch' in args:
+        verify_index = args.index('-verify_arch')
+        # Apple lipo treats every argument following -verify_arch as an arch.
+        architectures = args[verify_index + 1:]
+        if not architectures or any(a not in ('x86_64', 'arm64') for a in architectures):
+            sys.exit('unknown architecture specification flag after -verify_arch')
+        if verify_index != 1 or not pathlib.Path(args[0]).is_file():
+            sys.exit('lipo verification requires an input file before -verify_arch')
+        if os.environ.get('AU_TEST_MISSING_ARCH') in architectures:
+            sys.exit('mock missing architecture')
     if '-create' in args:
         pathlib.Path(args[args.index('-output') + 1]).write_text('mock universal Mach-O')
 """)
@@ -142,7 +150,7 @@ elif name == 'lipo':
                     for arch in (host, other)])
                 self.assertEqual([c[3:] for c in exports], [["syntakt"], ["syntakt"]])
                 merged = self.work / "build/bin/syntakt.component/Contents/MacOS/syntakt"
-                self.assertIn(["lipo", "-verify_arch", "x86_64", "arm64", str(merged)], calls)
+                self.assertIn(["lipo", str(merged), "-verify_arch", "x86_64", "arm64"], calls)
                 merge_index = next(i for i, c in enumerate(calls) if c[:2] == ["lipo", "-create"])
                 sign_index = next(i for i, c in enumerate(calls) if c[0] == "codesign")
                 self.assertLess(merge_index, sign_index)
@@ -222,8 +230,8 @@ add_custom_command(TARGET syntakt-au POST_BUILD
             compiler = Path(settings["CMAKE_C_COMPILER"])
             self.assertIn(f"clang -arch {arch}", compiler.read_text())
             self.assertTrue(os.access(compiler, os.X_OK))
-            self.assertIn(["lipo", "-verify_arch", arch,
-                           str(self.work / arch / "unicorn/lib/libunicorn.a")], calls)
+            self.assertIn(["lipo", str(self.work / arch / "unicorn/lib/libunicorn.a"),
+                           "-verify_arch", arch], calls)
 
     def test_bootstrap_rejects_qemu_incompatible_cache_paths(self):
         result = self.run_script("bootstrap-au-mac.sh", self.base / "cache with spaces")

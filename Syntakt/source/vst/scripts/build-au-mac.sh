@@ -10,7 +10,7 @@ for arch in x86_64 arm64; do
     echo "error: run bash source/vst/scripts/bootstrap-au-mac.sh '$au_work' first (from Syntakt/)." >&2
     exit 1
   fi
-  lipo -verify_arch "$arch" "$prefix/lib/libunicorn.a"
+  lipo "$prefix/lib/libunicorn.a" -verify_arch "$arch"
 done
 au_check_dpf
 dtcore=$(bash "$au_root/vst/scripts/dtcore.sh" "$au_work")
@@ -51,10 +51,10 @@ for arch in "$native_arch" "$other_arch"; do
     -DSYNTAKT_PLUGIN_FORMATS=au -DDPF_ROOT="$au_work/dpf" \
     -DDTCORE_DIR="$dtcore" -DDTCORE_UNICORN_PREFIX="$au_work/$arch/unicorn"
   cmake --build "$build" --target syntakt-au
-  lipo -verify_arch "$arch" "$build/bin/syntakt.component/Contents/MacOS/syntakt"
+  lipo "$build/bin/syntakt.component/Contents/MacOS/syntakt" -verify_arch "$arch"
   if [[ $arch == "$native_arch" ]]; then
     [[ -x $native_exporter ]]
-    lipo -verify_arch "$native_arch" "$native_exporter"
+    lipo "$native_exporter" -verify_arch "$native_arch"
   fi
 done
 
@@ -69,7 +69,7 @@ mkdir -p "$(dirname "$bundle")"
 ditto "$intel" "$bundle"
 lipo -create "$intel/Contents/MacOS/syntakt" "$arm/Contents/MacOS/syntakt" \
   -output "$bundle/Contents/MacOS/syntakt"
-lipo -verify_arch x86_64 arm64 "$bundle/Contents/MacOS/syntakt"
+lipo "$bundle/Contents/MacOS/syntakt" -verify_arch x86_64 arm64
 [[ -f $bundle/Contents/MacOS/syntakt && -f $bundle/Contents/Info.plist ]]
 res=$bundle/Contents/Resources
 mkdir -p "$res"

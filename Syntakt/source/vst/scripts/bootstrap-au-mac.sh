@@ -33,6 +33,6 @@ for arch in x86_64 arm64; do
     CMAKE_C_COMPILER="$au_toolchain/clang" CMAKE_CXX_COMPILER="$au_toolchain/clang++" \
     UNICORN_QEMU_CPU=$cpu \
     bash "$au_root/core/scripts/build-unicorn.sh" "$au_work/$arch/unicorn" "$au_work/$arch/unicorn-work"
-  lipo -verify_arch "$arch" "$au_work/$arch/unicorn/lib/libunicorn.a"
+  lipo "$au_work/$arch/unicorn/lib/libunicorn.a" -verify_arch "$arch"
 done
 echo "AU dependencies prepared in $au_work"
