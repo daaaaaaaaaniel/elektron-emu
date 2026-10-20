@@ -15,20 +15,47 @@ done
 au_check_dpf
 dtcore=$(bash "$au_root/vst/scripts/dtcore.sh" "$au_work")
 export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-4}
-for arch in x86_64 arm64; do
+native_arch=$(uname -m)
+other_arch=arm64
+[[ $native_arch != arm64 ]] || other_arch=x86_64
+native_exporter=$au_work/$native_arch/build/bin/syntakt-export
+# DPF's AU POST_BUILD runs the export executable to write Info.plist. Route the
+# foreign build's invocation to the native helper; no foreign code is executed.
+export_launcher=$au_work/native-au-export
+{
+  printf '#!/bin/bash\nset -euo pipefail\n'
+  printf 'native_exporter=%q\n' "$native_exporter"
+  cat <<'EOF'
+if [[ $# -lt 2 || ! -x $native_exporter ]]; then
+  echo "error: AU metadata requires the native export helper and a plug-in name." >&2
+  exit 1
+fi
+shift # Discard DPF's foreign export executable path; preserve its arguments.
+exec "$native_exporter" "$@"
+EOF
+} > "$export_launcher"
+chmod +x "$export_launcher"
+for arch in "$native_arch" "$other_arch"; do
   echo "Building Syntakt AU for $arch"
   au_prepare_compilers "$arch"
   build=$au_work/$arch/build
+  export_runner=
+  [[ $arch == "$native_arch" ]] || export_runner=$export_launcher
   ARCHFLAGS="-arch $arch" cmake -S "$au_root/vst" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE="${CONFIGURATION:-Release}" \
     -DCMAKE_C_COMPILER="$au_toolchain/clang" -DCMAKE_CXX_COMPILER="$au_toolchain/clang++" \
     -DCMAKE_OSX_SYSROOT="$au_sdk" \
     -DZLIB_LIBRARY="$au_sdk/usr/lib/libz.tbd" -DZLIB_INCLUDE_DIR="$au_sdk/usr/include" \
     -DCMAKE_OSX_ARCHITECTURES="$arch" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+    -DCMAKE_CROSSCOMPILING_EMULATOR="$export_runner" \
     -DSYNTAKT_PLUGIN_FORMATS=au -DDPF_ROOT="$au_work/dpf" \
     -DDTCORE_DIR="$dtcore" -DDTCORE_UNICORN_PREFIX="$au_work/$arch/unicorn"
   cmake --build "$build" --target syntakt-au
   lipo -verify_arch "$arch" "$build/bin/syntakt.component/Contents/MacOS/syntakt"
+  if [[ $arch == "$native_arch" ]]; then
+    [[ -x $native_exporter ]]
+    lipo -verify_arch "$native_arch" "$native_exporter"
+  fi
 done
 
 intel=$au_work/x86_64/build/bin/syntakt.component

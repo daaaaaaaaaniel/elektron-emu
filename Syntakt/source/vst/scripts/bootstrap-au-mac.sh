@@ -4,11 +4,6 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/au-common.sh"
 au_require_mac
 au_set_work "${1:-$HOME/Library/Caches/ElektronEmu/Syntakt-AU/universal}"
-# Upstream QEMU's configure rejects whitespace and colons in its source/build paths.
-if [[ $au_work == *[[:space:]:]* ]]; then
-  echo "error: the AU dependency cache path must not contain whitespace or colons (Unicorn restriction)." >&2
-  exit 1
-fi
 
 if [[ ! -e $au_work/dpf ]]; then
   git clone --quiet --no-checkout https://github.com/DISTRHO/DPF.git "$au_work/dpf"

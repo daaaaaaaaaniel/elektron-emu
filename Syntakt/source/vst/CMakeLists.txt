@@ -56,6 +56,13 @@ dpf_add_plugin(syntakt
   FILES_DSP ${PLUGIN_DSP_FILES}
   FILES_UI SyntaktUI.cpp)
 
+# The universal AU script reuses this host-native build tool for the other slice.
+# DPF does not assign an output directory to the AU export executable.
+if(TARGET syntakt-export)
+  set_target_properties(syntakt-export PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin/$<0:>")
+endif()
+
 target_include_directories(syntakt PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}

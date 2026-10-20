@@ -66,6 +66,14 @@ wrappers and SDK zlib, avoiding a host-only Homebrew zlib. Both plug-in binaries
 are checked with `lipo`, merged into one bundle, and signed after merging.
 Bootstrap and compilation take longer because each architecture is built separately.
 
+The plug-in is built for the host architecture first. DPF's AU build runs an
+export helper to generate `Info.plist`; the other architecture uses a launcher
+that executes the already-built native helper in its own bundle directory.
+An Intel Mac therefore never runs an ARM executable during the build, and an
+Apple Silicon Mac does not need Rosetta for the Intel slice. The two bundles'
+metadata must match before merging. Changing the host architecture also resets
+the CMake export-launcher setting for each slice on the next scripted build.
+
 If updating from the earlier ARM-only workflow, pull the latest branch, rerun
 bootstrap, and regenerate the Xcode project. The new `universal` cache keeps
 earlier ARM-only dependencies separate; they are not deleted or reused.

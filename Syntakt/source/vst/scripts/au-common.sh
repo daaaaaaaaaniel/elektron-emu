@@ -41,6 +41,11 @@ EOF
 au_set_work() {
   mkdir -p "$1"
   au_work=$(cd "$1" && pwd)
+  # QEMU configure and DPF's emulator command parser require a simple cache path.
+  if [[ $au_work == *[[:space:]:]* ]]; then
+    echo "error: the AU dependency cache path must not contain whitespace or colons." >&2
+    exit 1
+  fi
 }
 
 au_check_dpf() {
