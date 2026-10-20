@@ -15,7 +15,8 @@ class AUBuildTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="syntakt-au-")
         self.addCleanup(self.temp.cleanup)
-        self.base = Path(self.temp.name)
+        # macOS aliases /var to /private/var; subprocess cwd resolves the link.
+        self.base = Path(self.temp.name).resolve()
         self.work = self.base / "dependency-cache"
         self.home = self.base / "user home"
         self.bin = self.base / "tools"
