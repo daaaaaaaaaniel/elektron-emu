@@ -12,7 +12,7 @@ settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: "12.0"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
-    ST_AU_WORK: "$(HOME)/Library/Caches/ElektronEmu/Syntakt-AU/arm64"
+    ST_AU_WORK: "$(HOME)/Library/Caches/ElektronEmu/Syntakt-AU/universal"
 aggregateTargets:
   Syntakt-AU:
     targets: []

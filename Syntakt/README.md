@@ -18,7 +18,7 @@ The plug-in creates the folder and shows "Open folder" and "Choose firmware..." 
 ## Build
 
 For the XcodeGen-based **AUv2 component for Logic Pro**, see [AU-BUILD.md](AU-BUILD.md).
-Its Apple Silicon build and Logic validation require a Mac.
+Its universal Intel/Apple Silicon build and Logic validation require a Mac.
 
 On an Apple Silicon Mac with the Xcode command line tools, cmake, ninja and python3:
 
@@ -29,5 +29,5 @@ The script downloads Unicorn 2.1.4 and DPF at a fixed commit, applies the patche
 
 ## Known limits
 
-Tracks 1-8 and the rest of the digital side run the real DSP code; the analog tracks 9-12 are not there. There is no +Drive transfer, macOS builds are Apple Silicon only, and the view has only been tried under Wine on Windows.
+Tracks 1-8 and the rest of the digital side run the real DSP code; the analog tracks 9-12 are not there. There is no +Drive transfer, the prebuilt macOS VST3 is Apple Silicon only, and the view has only been tried under Wine on Windows. The universal AU build workflow still needs macOS validation.
 

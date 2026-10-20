@@ -10,6 +10,8 @@
 # build, ~200 MB) va su un disco con spazio: predefinito PREFIX/../unicorn-work.
 # Variabili: CMAKE_OSX_ARCHITECTURES (es. "arm64;x86_64"),
 # CMAKE_OSX_DEPLOYMENT_TARGET (predefinito 12.0).
+# AU cross-builds also set CMAKE_C_COMPILER, CMAKE_CXX_COMPILER,
+# CMAKE_OSX_SYSROOT and UNICORN_QEMU_CPU (x86_64 or aarch64).
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -42,12 +44,22 @@ for p in "${patches[@]}"; do
   git -C "$src" apply "$p"
 done
 
+# Explicit compilers let AU builds use architecture-selecting wrappers for
+# Unicorn's compiler probes as well as the actual compilation.
+cmake_args=()
+for setting in CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_OSX_SYSROOT UNICORN_QEMU_CPU; do
+  if [[ -n ${!setting:-} ]]; then
+    cmake_args+=("-D$setting=${!setting}")
+  fi
+done
+
 cmake -S "$src" -B "$work/build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DUNICORN_ARCH=m68k -DUNICORN_BUILD_TESTS=OFF \
   -DBUILD_SHARED_LIBS=OFF -DUNICORN_INSTALL=ON \
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="${CMAKE_OSX_DEPLOYMENT_TARGET:-12.0}" \
   ${CMAKE_OSX_ARCHITECTURES:+-DCMAKE_OSX_ARCHITECTURES="$CMAKE_OSX_ARCHITECTURES"} \
+  ${cmake_args[@]+"${cmake_args[@]}"} \
   -DCMAKE_INSTALL_PREFIX="$prefix"
 cmake --build "$work/build" --config Release
 cmake --install "$work/build" --config Release

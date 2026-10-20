@@ -1,25 +1,48 @@
 #!/usr/bin/env bash
-# Build an arm64 AUv2 bundle using DPF; suitable for an Xcode aggregate target.
+# Build each CPU slice with DPF, then merge a universal AUv2 bundle.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/au-common.sh"
 au_require_mac
-au_set_work "${1:-$HOME/Library/Caches/ElektronEmu/Syntakt-AU/arm64}"
-if [[ ! -f $au_work/unicorn/lib/libunicorn.a || ! -f $au_work/unicorn/DTCORE-UNICORN.txt || ! -d $au_work/dpf/.git ]]; then
-  echo "error: run bash source/vst/scripts/bootstrap-au-mac.sh '$au_work' first (from Syntakt/)." >&2
-  exit 1
-fi
+au_set_work "${1:-$HOME/Library/Caches/ElektronEmu/Syntakt-AU/universal}"
+for arch in x86_64 arm64; do
+  prefix=$au_work/$arch/unicorn
+  if [[ ! -f $prefix/lib/libunicorn.a || ! -f $prefix/DTCORE-UNICORN.txt || ! -d $au_work/dpf/.git ]]; then
+    echo "error: run bash source/vst/scripts/bootstrap-au-mac.sh '$au_work' first (from Syntakt/)." >&2
+    exit 1
+  fi
+  lipo -verify_arch "$arch" "$prefix/lib/libunicorn.a"
+done
 au_check_dpf
 dtcore=$(bash "$au_root/vst/scripts/dtcore.sh" "$au_work")
-build=$au_work/build
 export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-4}
-cmake -S "$au_root/vst" -B "$build" -G Ninja \
-  -DCMAKE_BUILD_TYPE="${CONFIGURATION:-Release}" \
-  -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-  -DSYNTAKT_PLUGIN_FORMATS=au -DDPF_ROOT="$au_work/dpf" \
-  -DDTCORE_DIR="$dtcore" -DDTCORE_UNICORN_PREFIX="$au_work/unicorn"
-cmake --build "$build" --target syntakt-au
+for arch in x86_64 arm64; do
+  echo "Building Syntakt AU for $arch"
+  au_prepare_compilers "$arch"
+  build=$au_work/$arch/build
+  ARCHFLAGS="-arch $arch" cmake -S "$au_root/vst" -B "$build" -G Ninja \
+    -DCMAKE_BUILD_TYPE="${CONFIGURATION:-Release}" \
+    -DCMAKE_C_COMPILER="$au_toolchain/clang" -DCMAKE_CXX_COMPILER="$au_toolchain/clang++" \
+    -DCMAKE_OSX_SYSROOT="$au_sdk" \
+    -DZLIB_LIBRARY="$au_sdk/usr/lib/libz.tbd" -DZLIB_INCLUDE_DIR="$au_sdk/usr/include" \
+    -DCMAKE_OSX_ARCHITECTURES="$arch" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+    -DSYNTAKT_PLUGIN_FORMATS=au -DDPF_ROOT="$au_work/dpf" \
+    -DDTCORE_DIR="$dtcore" -DDTCORE_UNICORN_PREFIX="$au_work/$arch/unicorn"
+  cmake --build "$build" --target syntakt-au
+  lipo -verify_arch "$arch" "$build/bin/syntakt.component/Contents/MacOS/syntakt"
+done
 
-bundle=$build/bin/syntakt.component
+intel=$au_work/x86_64/build/bin/syntakt.component
+arm=$au_work/arm64/build/bin/syntakt.component
+if ! cmp -s "$intel/Contents/Info.plist" "$arm/Contents/Info.plist"; then
+  echo "error: Intel and ARM AU metadata differ; cannot merge the bundles." >&2
+  exit 1
+fi
+bundle=$au_work/build/bin/syntakt.component
+mkdir -p "$(dirname "$bundle")"
+ditto "$intel" "$bundle"
+lipo -create "$intel/Contents/MacOS/syntakt" "$arm/Contents/MacOS/syntakt" \
+  -output "$bundle/Contents/MacOS/syntakt"
+lipo -verify_arch x86_64 arm64 "$bundle/Contents/MacOS/syntakt"
 [[ -f $bundle/Contents/MacOS/syntakt && -f $bundle/Contents/Info.plist ]]
 res=$bundle/Contents/Resources
 mkdir -p "$res"
@@ -34,7 +57,7 @@ fi
 python3 "$au_root/vst/scripts/check-bundle.py" "$bundle"
 codesign --force --sign - "$bundle"
 codesign --verify --strict "$bundle"
-echo "Built $bundle"
+echo "Built universal (x86_64 + arm64) $bundle"
 
 if [[ ${INSTALL:-0} == 1 ]]; then
   destination=$HOME/Library/Audio/Plug-Ins/Components/syntakt.component

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Prepare a dedicated arm64 AU dependency cache; no firmware is downloaded.
+# Prepare separate Intel and ARM dependencies; no firmware is downloaded.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/au-common.sh"
 au_require_mac
-au_set_work "${1:-$HOME/Library/Caches/ElektronEmu/Syntakt-AU/arm64}"
+au_set_work "${1:-$HOME/Library/Caches/ElektronEmu/Syntakt-AU/universal}"
+# Upstream QEMU's configure rejects whitespace and colons in its source/build paths.
+if [[ $au_work == *[[:space:]:]* ]]; then
+  echo "error: the AU dependency cache path must not contain whitespace or colons (Unicorn restriction)." >&2
+  exit 1
+fi
 
 if [[ ! -e $au_work/dpf ]]; then
   git clone --quiet --no-checkout https://github.com/DISTRHO/DPF.git "$au_work/dpf"
@@ -22,7 +27,17 @@ au_check_dpf
 
 # The repository helper verifies the upstream revision and every patch checksum.
 # unicorn-work is a disposable dependency source tree owned by this bootstrap.
-export CMAKE_OSX_ARCHITECTURES=arm64 CMAKE_OSX_DEPLOYMENT_TARGET=12.0
 export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-4}
-bash "$au_root/core/scripts/build-unicorn.sh" "$au_work/unicorn" "$au_work/unicorn-work"
+for arch in x86_64 arm64; do
+  echo "Preparing Unicorn for $arch"
+  au_prepare_compilers "$arch"
+  cpu=$arch
+  [[ $arch != arm64 ]] || cpu=aarch64
+  ARCHFLAGS="-arch $arch" CMAKE_OSX_ARCHITECTURES=$arch \
+    CMAKE_OSX_DEPLOYMENT_TARGET=12.0 CMAKE_OSX_SYSROOT="$au_sdk" \
+    CMAKE_C_COMPILER="$au_toolchain/clang" CMAKE_CXX_COMPILER="$au_toolchain/clang++" \
+    UNICORN_QEMU_CPU=$cpu \
+    bash "$au_root/core/scripts/build-unicorn.sh" "$au_work/$arch/unicorn" "$au_work/$arch/unicorn-work"
+  lipo -verify_arch "$arch" "$au_work/$arch/unicorn/lib/libunicorn.a"
+done
 echo "AU dependencies prepared in $au_work"

@@ -3,15 +3,20 @@
 This build uses XcodeGen to generate an Xcode project with a `Syntakt-AU`
 aggregate target. That target calls CMake/Ninja and the existing pinned DPF AUv2
 wrapper to produce `syntakt.component`. It is an AU instrument (`aumu`), with
-subtype `sntk` and manufacturer `Simo`. This is not an AUv3 extension.
+subtype `sntk` and manufacturer `Simo`. The component contains both `x86_64` and
+`arm64` code. This is not an AUv3 extension.
 
 ## Prerequisites
 
-- An Apple Silicon Mac, running native arm64 tools, with macOS 12 or newer.
+- An Intel or Apple Silicon Mac, with macOS 12 or newer.
 - Xcode, selected with `xcode-select`, with its first-launch setup completed.
 - Homebrew packages: `brew install xcodegen cmake ninja python`.
   XcodeGen 2.42.0 or newer is required.
 - Internet access to GitHub during dependency bootstrap.
+
+Either Mac architecture can compile both slices using Apple's SDK. Your Mac
+can validate its native slice; an Intel Mac cannot execute the ARM slice.
+Test on both architectures before distributing the component.
 
 The generated Xcode project is ignored by Git; `project.yml` is its source.
 The AU uses the existing engine and NanoVG/OpenGL interface. It does not require
@@ -46,17 +51,31 @@ bundled `source/dtcore` supplies the common engine. No private sibling checkout
 is needed. Re-run bootstrap after changing dependency patches. Only use a
 dedicated dependency cache: the existing Unicorn helper resets its cached sources.
 
-The default cache is `~/Library/Caches/ElektronEmu/Syntakt-AU/arm64`. To use
+The default cache is `~/Library/Caches/ElektronEmu/Syntakt-AU/universal`. To use
 another path, pass it to bootstrap and to the build script, or set `ST_AU_WORK`
-in the Xcode build settings / `xcodebuild` command. Paths containing spaces are
-supported. No network fetch runs during the ordinary build.
+in the Xcode build settings / `xcodebuild` command. The dependency cache path
+must not contain whitespace or colons: upstream Unicorn/QEMU rejects those
+paths. The repository checkout can contain spaces. No network fetch runs
+during the ordinary build.
+
+Bootstrap builds Unicorn separately under `x86_64/` and `arm64/`. Each uses an
+Apple Clang wrapper selecting that architecture for compiler probes and
+compilation, and an explicit QEMU configuration CPU (including a pinned build
+patch to bypass Darwin's native CPU detection). Ordinary AU builds use the same
+wrappers and SDK zlib, avoiding a host-only Homebrew zlib. Both plug-in binaries
+are checked with `lipo`, merged into one bundle, and signed after merging.
+Bootstrap and compilation take longer because each architecture is built separately.
+
+If updating from the earlier ARM-only workflow, pull the latest branch, rerun
+bootstrap, and regenerate the Xcode project. The new `universal` cache keeps
+earlier ARM-only dependencies separate; they are not deleted or reused.
 
 ## Install and validate
 
 The built component is:
 
 ```text
-~/Library/Caches/ElektronEmu/Syntakt-AU/arm64/build/bin/syntakt.component
+~/Library/Caches/ElektronEmu/Syntakt-AU/universal/build/bin/syntakt.component
 ```
 
 For a first local installation, close Logic and run from `Syntakt`:
@@ -65,6 +84,15 @@ For a first local installation, close Logic and run from `Syntakt`:
 INSTALL=1 bash source/vst/scripts/build-au-mac.sh
 auval -v aumu sntk Simo
 ```
+
+To inspect the architectures in the finished component:
+
+```bash
+lipo -archs ~/Library/Caches/ElektronEmu/Syntakt-AU/universal/build/bin/syntakt.component/Contents/MacOS/syntakt
+```
+
+Expect `x86_64 arm64` (order may differ). On your Intel Mac, `auval` and Logic
+test the Intel slice. Validate the ARM slice separately on Apple Silicon.
 
 The script installs into `~/Library/Audio/Plug-Ins/Components/`. It refuses to
 replace an existing component; move your previous `syntakt.component` aside

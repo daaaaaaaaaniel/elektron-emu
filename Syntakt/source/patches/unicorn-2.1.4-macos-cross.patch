@@ -1,0 +1,17 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -374,8 +374,14 @@
+     #     ${TARGET_LIST}
+     #     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}"
+     # )
++    # A Darwin cross-build must override configure's sysctl-based CPU detection.
++    set(UNICORN_CONFIGURE_CPU "")
++    if(UNICORN_QEMU_CPU)
++        set(UNICORN_CONFIGURE_CPU "--cpu=${UNICORN_QEMU_CPU}")
++    endif()
+     execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/qemu/configure
+         --cc=${CMAKE_C_COMPILER}
++        ${UNICORN_CONFIGURE_CPU}
+         ${EXTRA_CFLAGS}
+         ${TARGET_LIST}
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

@@ -12,14 +12,30 @@ au_require_mac() {
     echo "error: AU builds require macOS and the Apple SDK." >&2
     exit 1
   fi
-  if [[ $(uname -m) != arm64 ]]; then
-    echo "error: this initial AU build requires an Apple Silicon Mac running native arm64 tools." >&2
-    exit 1
-  fi
-  for tool in git cmake ninja python3 xcrun codesign; do
+  case $(uname -m) in
+    arm64|x86_64) ;;
+    *)
+      echo "error: AU builds require an Intel or Apple Silicon Mac." >&2
+      exit 1
+      ;;
+  esac
+  for tool in git cmake ninja python3 xcrun codesign lipo ditto; do
     command -v "$tool" >/dev/null || { echo "error: missing $tool" >&2; exit 1; }
   done
-  xcrun --sdk macosx --show-sdk-path >/dev/null
+  au_sdk=$(xcrun --sdk macosx --show-sdk-path)
+}
+
+au_prepare_compilers() {
+  local arch=$1 tool
+  au_toolchain=$au_work/toolchains/$arch
+  mkdir -p "$au_toolchain"
+  for tool in clang clang++; do
+    cat > "$au_toolchain/$tool" <<EOF
+#!/bin/bash
+exec /usr/bin/xcrun --sdk macosx $tool -arch $arch "\$@"
+EOF
+    chmod +x "$au_toolchain/$tool"
+  done
 }
 
 au_set_work() {

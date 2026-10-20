@@ -22,6 +22,7 @@ patches=(
   "$root/patches/unicorn-2.1.4-m68k-emac-spec.patch"
   "$root/patches/unicorn-2.1.4-m68k-hook-index.patch"
   "$root/patches/unicorn-2.1.4-m68k-emac-sat.patch"
+  "$root/patches/unicorn-2.1.4-macos-cross.patch"
 )
 patch_shas=(
   56de71acf2adbd5ca2f448095478e65e49fd79d378aeb5b5e4217d2c90f52f4e
@@ -39,6 +40,7 @@ patch_shas=(
   4586d7203ea32a3ca1891f51b2406adbeb394cd880915e26b60b60163627b6fe
   fc32d6112f1917e2cdb20a055e997c92f5210d694a8d925094752aa692d4daea
   3bf897c336fbb526f98326cc94d856d5583c82431a66371e34e6ff8256ffdfd2
+  cb732da9111dc82ac6f5ea24920e802922148cb2fae3e7edb9b129b1d054246c
 )
 python=${PYTHON:-$root/.venv/bin/python}
 dry_run=false
